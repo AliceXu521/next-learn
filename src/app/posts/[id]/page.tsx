@@ -1,3 +1,5 @@
+// src/app/posts/[id]/page.tsx
+
 import { getAllPostIds, getPostData } from '@/lib/posts';
 import { notFound } from 'next/navigation';
 
@@ -7,10 +9,12 @@ type Props = {
   };
 };
 
-// 动态生成所有路径
+// ✅ 动态生成所有路径
 export async function generateStaticParams() {
-  const ids = getAllPostIds();
-  return ids.map((id) => ({ id }));
+  const ids = await getAllPostIds();
+  return ids.map((post) => ({
+    id: post.id,  // 返回的是 id 字符串
+  }));
 }
 
 // 详情页组件
@@ -29,3 +33,5 @@ export default async function PostPage({ params }: Props) {
     </main>
   );
 }
+
+

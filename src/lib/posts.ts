@@ -1,49 +1,39 @@
-import fs from 'fs';
+import fs from 'fs/promises';
 import path from 'path';
 import matter from 'gray-matter';
-import { remark } from 'remark';
-import html from 'remark-html';
+import { marked } from 'marked';
 
+// 获取 posts 文件夹的路径
 const postsDirectory = path.join(process.cwd(), 'posts');
 
-// 获取所有文章元数据
-export function getSortedPostsData() {
-  const fileNames = fs.readdirSync(postsDirectory);
-
-  const allPostsData = fileNames.map((fileName) => {
-    const id = fileName.replace(/\.md$/, '');
-    const fullPath = path.join(postsDirectory, fileName);
-    const fileContents = fs.readFileSync(fullPath, 'utf8');
-    const matterResult = matter(fileContents);
-
-    return {
-      id,
-      ...(matterResult.data as { date: string; title: string }),
-    };
-  });
-
-  return allPostsData.sort((a, b) => (a.date < b.date ? 1 : -1));
+// 获取所有文章的 ID（即文件名，不包含扩展名）
+export async function getAllPostIds() {
+  const fileNames = await fs.readdir(postsDirectory);
+  return fileNames
+    .filter((file) => file.endsWith('.md')) // 仅匹配 Markdown 文件
+    .map((fileName) => ({
+      id: fileName.replace(/\.md$/, ''), // 去除文件扩展名
+    }));
 }
 
-// 获取所有文章 id（用于动态路由）
-export function getAllPostIds() {
-  const fileNames = fs.readdirSync(postsDirectory);
-  return fileNames.map((fileName) => fileName.replace(/\.md$/, ''));
-}
-
-// 获取单篇文章内容（包含解析后的 HTML）
+// 根据 ID 获取单篇文章的详细内容（包括元数据和 Markdown 内容）
 export async function getPostData(id: string) {
-  const fullPath = path.join(postsDirectory, `${id}.md`);
-  const fileContents = fs.readFileSync(fullPath, 'utf8');
+  const fullPath = path.join(postsDirectory, `${id}.md`); // 拼接成完整路径
+  const fileContents = await fs.readFile(fullPath, 'utf8'); // 读取文件内容
 
-  const matterResult = matter(fileContents);
-  const processedContent = await remark().use(html).process(matterResult.content);
-  const contentHtml = processedContent.toString();
+  // 使用 gray-matter 解析 Markdown 文件的头部元数据（如标题、日期等）
+  const { data, content } = matter(fileContents);
 
+  // 使用 marked 将 Markdown 转换为 HTML 内容
+  const contentHtml = marked(content);
+
+  // 返回文章的元数据和 HTML 内容
   return {
     id,
+    title: data.title,
+    date: data.date,
     contentHtml,
-    ...(matterResult.data as { title: string; date: string }),
   };
 }
+
 
